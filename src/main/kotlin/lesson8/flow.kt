@@ -137,6 +137,18 @@ class ServerWorld(
         //emit может разослать событие не сразу, если подписчики медленные  (очередь потоков)
         // Готовим событие заранее и рассылаем его уже в корутине
     }
+    suspend fun applyLoaded(playerSave: PlayerSave) {
+        _playerState.value = playerSave
+
+        emitEvent(PlayerProgressSaved(
+           playerId = playerSave.playerId,
+            reason = "загрузка из JSON файла"
+        ))
+    }
+    // написать реальную загрузку с файла, которая будет записывать загруженную информацию из файла в состояние игрока
+    //Создаёте метод server.applyLoaded(playerSave: PlayerSave), Который должен:
+    // заменять старое состояние игрока (хп, золото, этап квеста) на загруженное
+    // публикует PlayerProgressSaved с причиной = загрузки файла в ручную из JSON
 }
 //сериализация - сохранение данных в файл
 class SaveSystem{
@@ -165,12 +177,13 @@ class SaveSystem{
         val file = saveFile(playerId)
         if (!file.exists()) return null
 
+        val text = file.readText()
+
         return try {
-            val text = file.readText()
             json.decodeFromString<PlayerSave>(text)
         } catch (e: Exception) {
             println("Ошибка загрузки файла $playerId")
-            null
+             null
 
         }
     }
@@ -192,25 +205,27 @@ fun pushLog(ui: UiState, text: String){
     ui.log.value = (ui.log.value + text).takeLast(20)
 }
 
-fun main() = KoolApplication{
+fun main() = KoolApplication {
     val ui = UiState()
 
     val server = ServerWorld(initialPlayerId = ui.activePlayerId.value)
     val saver = SaveSystem()
+
+
 
     addScene {
 
         defaultOrbitCamera()
 
         addColorMesh {
-            generate { cube{colored()} }
+            generate { cube { colored() } }
 
-            shader = KslPbrShader{
-                color {vertexColor()}
-                metallic (0.7f)
-                roughness (0.4f)
+            shader = KslPbrShader {
+                color { vertexColor() }
+                metallic(0.7f)
+                roughness(0.4f)
             }
-            onUpdate{
+            onUpdate {
                 transform.rotate(45f.deg * Time.deltaT, Vec3f.X_AXIS)
             }
         }
@@ -218,19 +233,62 @@ fun main() = KoolApplication{
             setup(Vec3f(-1f, -1f, -1f))
             setColor(Color.WHITE, 5f)
         }
-        // подписки на Flow надо запускать в корутинах
-        // в Kool у сцены есть coroutineScope тут и запускаем
-
-        // Подписка 1: слушаем события server.events
         coroutineScope.launch {
             server.events.collect { event ->
                 // collect - слушать поток (каждое событие будет попадать в данный слушатель)
-                when(event){
-                    is DamageDealt -> pushLog(ui, "${event.playerId} нанёс ${event.amount} урона ${event.targetId}")
-                    is QuestStateChanged -> pushLog(ui, "${event.playerId} перешёл на этап ${event.newState} квеста ${event.questId}")
-                    is PlayerProgressSaved -> pushLog(ui, "Сохранён прогресс ${event.playerId} по причине ${event.reason}")
+                when (event) {
+                    is DamageDealt -> pushLog(
+                        ui,
+                        "${event.playerId} нанёс ${event.amount} урона ${event.targetId}"
+                    )
+
+                    is QuestStateChanged -> pushLog(
+                        ui,
+                        "${event.playerId} перешёл на этап ${event.newState} квеста ${event.questId}"
+                    )
+
+                    is PlayerProgressSaved -> pushLog(
+                        ui,
+                        "Сохранён прогресс ${event.playerId} по причине ${event.reason}"
+                    )
                 }
             }
         }
     }
-}
+    // подписки на Flow надо запускать в корутинах
+    // в Kool у сцены есть coroutineScope тут и запускаем
+    addScene {
+        setupUiScene(ClearColorLoad)
+        addPanelSurface {
+            Row{
+             Button {
+                    modifier
+                        .margin(8.dp)
+                        .onClick{
+                            saver.save(server.playerState.value)
+                            pushLog(ui, "Сохранено состояние для ${ui.activePlayerId.value}")
+                        }
+             }
+
+             Button {
+                modifier
+                    .margin(8.dp)
+                    .onClick {
+                        val loaded = saver.load(ui.activePlayerId.value)
+                        if (loaded != null) {
+                            coroutineScope.launch {
+                            server.applyLoaded(loaded)
+                            pushLog(
+                                ui,
+                                "Загружено сохранение для ${loaded.playerId}: HP=${loaded.hp}, Gold=${loaded.gold}"
+                            )}
+                        } else {
+                            pushLog(ui, "Нет сохранения для ${ui.activePlayerId.value}, создан новый персонаж")
+                        }
+                    }
+            }
+            }
+        }
+    }
+}           // Подписка 1: слушаем события server.events
+
