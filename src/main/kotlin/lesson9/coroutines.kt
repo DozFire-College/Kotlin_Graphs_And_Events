@@ -35,7 +35,6 @@ import kotlinx.serialization.builtins.ShortArraySerializer
 import kotlinx.serialization.encodeToString //запись в файл
 import kotlinx.serialization.decodeFromString // Чтение файла
 import kotlinx.serialization.json.Json // Формат файла Json
-import lesson7.pushLog
 
 
 import java.io.File
