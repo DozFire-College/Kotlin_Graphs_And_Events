@@ -480,9 +480,9 @@ fun main() = KoolApplication {
     }
     addScene {
         setupUiScene(ClearColorLoad)
-
         addPanelSurface {
-            modifier
+
+         modifier
                 .align(AlignmentX.Start, AlignmentY.Top)
                 .margin(16.dp)
                 .background(RoundRectBackground(Color(0f, 0f, 0f, 0.6f), 14.dp))
