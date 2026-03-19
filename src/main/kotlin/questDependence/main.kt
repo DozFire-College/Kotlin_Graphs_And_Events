@@ -220,6 +220,20 @@ class QuestSystem {
                 else -> "Квест завершён"
             }
         }
+        if (q.questId == "q_yura"){
+            return when(q.step){
+                0 -> "Поговори с Юрой и узнай по поводу автомата"
+                1 -> {
+                    when (q.branch) {
+                        QuestBranch.NONE -> "Выбери как ты хочешь закрыть Котлин: Help или Threat"
+                        QuestBranch.HELP -> "Напиши контрольную и сдай Юре"
+                        QuestBranch.THREAD -> "Заплати золотом: ${q.progressCurrent} / ${q.progressTarget}"
+                    }
+                }
+                2 -> "Сдай квест у Юры"
+                 else -> "Квест завершён"
+            }
+        }
         return "Неизвестный квест"
         }
 
@@ -251,7 +265,20 @@ class QuestSystem {
                 else -> "Готово"
             }
         }
-
+        if (q.questId == "q_yura"){
+            return when (q.step){
+                0 -> "NPC: Юра"
+                1 -> {
+                    when(q.branch){
+                        QuestBranch.NONE -> "Выбери вариант диалога"
+                        QuestBranch.HELP -> "Сделай контрольную"
+                        QuestBranch.THREAD -> "Найди золото"
+                    }
+                }
+                2 -> "NPC: Юра"
+                else -> "Готово"
+            }
+        }
         return ""
     }
     fun branchTextFor(branch: QuestBranch): String{
@@ -291,7 +318,9 @@ class QuestSystem {
 
         val empty = blocks - filled
 
-        return  "█".repeat(filled) + "▒".repeat(empty)
+        val bar =  "█".repeat(filled) + "▒".repeat(empty)
+        val percent = (ratio * 100).toInt().coerceIn(0, 100)
+        return  "$bar $percent%"
     }
     fun toJournalEntry(q: QuestStateOnServer): QuestJournalEntry{
         val progressText = if(q.progressTarget > 0) "${q.progressCurrent} / ${q.progressTarget}" else ""
@@ -329,7 +358,9 @@ class QuestSystem {
             if (q.questId == "q_guard"){
                 copy[i] = updateGuard(q, event)
             }
-
+            if (q.questId == "q_yura"){
+                copy[i] = updateYura(q, event)
+            }
         }
         return copy.toList()
     }
@@ -392,6 +423,48 @@ class QuestSystem {
         }
         return base
     }
+    fun updateYura(q: QuestStateOnServer, event: GameEvent): QuestStateOnServer{
+        if (q.step == 0 && event is QuestBranchChosen && event.questId == q.questId) {
+        return when (event.branch) {
+            QuestBranch.HELP -> q.copy(
+                step = 1,
+                branch = QuestBranch.HELP,
+                progressCurrent = 0,
+                progressTarget = 1,
+                isNew = false
+            )
+
+            QuestBranch.THREAD -> q.copy(
+                step = 1,
+                branch = QuestBranch.THREAD,
+                progressCurrent = 0,
+                progressTarget = 100000,
+                isNew = false
+            )
+
+            QuestBranch.NONE -> q
+        }
+    }
+    if (q.step == 1 && q.branch == QuestBranch.HELP && event is ItemCollected && event.itemId == "Kontrol_Work") {
+        val newCurrent = (q.progressCurrent + event.countAdded).coerceAtMost(q.progressTarget)
+        val update = q.copy(progressCurrent = newCurrent, isNew = false)
+
+        if (newCurrent >= q.progressTarget) {
+            return update.copy(step = 2, progressCurrent = 0, progressTarget = 0)
+        }
+        return update
+    }
+    if (q.step == 1 && q.branch == QuestBranch.THREAD && event is GoldTurnedIn && event.questId == q.questId) {
+        val newCurrent = (q.progressCurrent + event.amount).coerceAtMost(q.progressTarget)
+        val update = q.copy(progressCurrent = newCurrent, isNew = false)
+
+        if (newCurrent >= q.progressTarget) {
+            return update.copy(step = 2, progressCurrent = 0, progressTarget = 0)
+        }
+        return update
+    }
+    return q
+}
 }
 class  GameServer{
     private val _events = MutableSharedFlow<GameEvent>(extraBufferCapacity = 64)
@@ -595,6 +668,18 @@ fun initialQuestList(): List<QuestStateOnServer>{
             false,
             false,
             "q_alchemist"
+        ),
+        QuestStateOnServer(
+            "q_yura",
+            "Сдать экзамен у Юры",
+            QuestStatus.LOCKED,
+            0,
+            QuestBranch.NONE,
+            0,
+            0,
+            false,
+            false,
+            "q_guard"
         )
     )
 }
