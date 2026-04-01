@@ -44,8 +44,6 @@ import kotlinx.serialization.Serializable // Анотация, что можно
 import kotlinx.serialization.json.Json // Формат файла Json
 
 
-import lesson2.putIntoSlot
-
 import java.io.File
 import javax.print.DocFlavor
 
