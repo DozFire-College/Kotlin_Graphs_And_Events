@@ -2,7 +2,6 @@ package lesson11
 
 import de.fabmax.kool.KoolApplication           // KoolApplication - запускает Kool-приложение (окно + цикл рендера)
 import de.fabmax.kool.addScene                  // addScene - функция "добавь сцену" в приложение (у тебя она просила отдельный импорт)
-import de.fabmax.kool.math.FLT_EPSILON
 import de.fabmax.kool.math.Vec3f                // Vec3f - 3D-вектор (x, y, z), как координаты / направление
 import de.fabmax.kool.math.deg                  // deg - превращает число в "градусы" (угол)
 import de.fabmax.kool.scene.*                   // scene.* - Scene, defaultOrbitCamera, addColorMesh, lighting и т.д.
@@ -11,27 +10,20 @@ import de.fabmax.kool.util.Color                // Color - цвет (RGBA)
 import de.fabmax.kool.util.Time                 // Time.deltaT - сколько секунд прошло между кадрами
 import de.fabmax.kool.pipeline.ClearColorLoad   // ClearColorLoad - режим: "не очищай экран, оставь то что уже нарисовано"
 import de.fabmax.kool.modules.ui2.*             // UI2: addPanelSurface, Column, Row, Button, Text, dp, remember, mutableStateOf
-import de.fabmax.kool.util.DynamicStruct
-import de.fabmax.kool.modules.ui2.UiModifier.*
-import de.fabmax.kool.physics.geometry.PlaneGeometry
-import de.fabmax.kool.physics.vehicle.Vehicle
-import de.fabmax.kool.util.checkIsReleased
+import kotlinx.coroutines.CoroutineScope
 
 import kotlinx.coroutines.launch  // запускает корутину
 import kotlinx.coroutines.Job     // контроллер запущенной корутины
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.isActive // проверка жива ли ещё корутина - полезно для циклов
 import kotlinx.coroutines.delay
 
 // Flow корутины
-import kotlinx.coroutines.launch // запуск корутины
 import kotlinx.coroutines.flow.MutableSharedFlow // табло состояний
 import kotlinx.coroutines.flow.SharedFlow // Только чтение для подписчиков
 import kotlinx.coroutines.flow.MutableStateFlow // Радиостанция событий
 import kotlinx.coroutines.flow.StateFlow // Только для чтения стостояний
 import kotlinx.coroutines.flow.asSharedFlow // Отдать наружу только SharedFlow
 import kotlinx.coroutines.flow.asStateFlow // Отдать только StateFlow
-import kotlinx.coroutines.flow.collect // слушать поток
 
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
@@ -260,7 +252,7 @@ class DamageSystem(private val server: GameServer){
         }
     }
 }
-class QuestSystem(private  val server: GameServer){
+class QuestSystem(private val server: GameServer, coroutineScope: CoroutineScope){
     private val questId = "q_alchemist"
     private val npcId = "alchemists"
 
