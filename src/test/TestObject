@@ -4,87 +4,115 @@ import de.fabmax.kool.KoolApplication
 import de.fabmax.kool.math.deg
 import de.fabmax.kool.math.Vec3f
 import de.fabmax.kool.modules.ksl.KslPbrShader
-import de.fabmax.kool.scene.*
+import de.fabmax.kool.scene.addColorMesh
+import de.fabmax.kool.scene.defaultOrbitCamera
 import de.fabmax.kool.modules.ui2.*
-import de.fabmax.kool.pipeline.ClearColorDepthLoad
+import de.fabmax.kool.pipeline.ClearColorLoad
 import de.fabmax.kool.util.Color
 import de.fabmax.kool.util.MdColor
+import de.fabmax.kool.scene.Scene
 import de.fabmax.kool.scene.geometry.*
 
 fun main() = KoolApplication {
+
+    val scene = Scene
     
-    lateinit var cubeNode: Node
-    
-    // Сцена 1: 3D контент
     addScene {
+        // Настройка камеры
         defaultOrbitCamera()
 
-        cubeNode = addColorMesh {
+        // Создаём куб с разными цветами граней
+        val cubeNode = addColorMesh {
             generate {
-                cube { colored() }
+                cube {
+                    colored()
+                }
             }
             shader = KslPbrShader {
                 color { vertexColor() }
-                metallic(0.1f)
-                roughness(0.3f)
+                metallic(0f)
+                roughness(0.25f)
             }
         }
 
+        // Освещение
         lighting.singleDirectionalLight {
             setup(Vec3f(-1f, -1f, -1f))
             setColor(Color.WHITE, 5f)
         }
-        
-        // Очищаем цвет И глубину для 3D
-        mainRenderPass.clearColors = ClearColorDepthLoad
-    }
 
-    // Сцена 2: UI (поверх 3D)
-    addScene {
-        // Очищаем ТОЛЬКО глубину, сохраняя цвет от 3D сцены
-        mainRenderPass.clearDepth = true
-        mainRenderPass.clearColors = null // НЕ очищаем цвет!
+        // === ВОТ ИСПРАВЛЕНИЕ: убираем ClearColorLoad ===
+        setupUiScene()  // <-- БЕЗ ПАРАМЕТРА!
         
-        UiScene(this).apply {
-            addPanelSurface(
-                colors = Colors.singleColorLight(MdColor.BLUE_GREY)
-            ) {
+        addPanelSurface(
+            colors = Colors.singleColorLight(MdColor.BLUE_GREY)
+        ) {
+            modifier
+                .size(300.dp, 160.dp)
+                .align(AlignmentX.End, AlignmentY.Top)
+                .margin(16.dp)
+                .background(RoundRectBackground(colors.background, 12.dp))
+
+            Column {
                 modifier
-                    .size(300.dp, 200.dp)
-                    .align(AlignmentX.End, AlignmentY.Top)
+                    .alignX(AlignmentX.Center)
                     .margin(16.dp)
-                    .background(RoundRectBackground(colors.background, 12.dp))
 
-                Column {
+                Text("Управление вращением") {
+                    modifier
+                        .margin(bottom = 16.dp)
+                        .textColor(Color.WHITE)
+                }
+
+                Row {
                     modifier
                         .alignX(AlignmentX.Center)
-                        .margin(16.dp)
+                        .margin(bottom = 16.dp)
 
-                    Text("Управление вращением") {
-                        modifier
-                            .margin(bottom = 16.dp)
-                            .textColor(Color.WHITE)
-                    }
-
-                    Button("Влево") {
+                    Button("◀ -10°") {
                         modifier
                             .padding(horizontal = 12.dp, vertical = 8.dp)
+                            .margin(end = 8.dp)
                             .onClick {
                                 cubeNode.transform.rotate((-10f).deg, Vec3f.Y_AXIS)
                             }
                     }
-                    
-                    Button("Вправо") {
+
+                    Button("+10° ▶") {
                         modifier
                             .padding(horizontal = 12.dp, vertical = 8.dp)
+                            .margin(start = 8.dp)
                             .onClick {
                                 cubeNode.transform.rotate(10f.deg, Vec3f.Y_AXIS)
                             }
                     }
-                    
+                }
+
+                Row {
+                    modifier.alignX(AlignmentX.Center)
+
+                    Button("Вверх ▲") {
+                        modifier
+                            .padding(horizontal = 8.dp, vertical = 6.dp)
+                            .margin(end = 4.dp)
+                            .onClick {
+                                cubeNode.transform.rotate(10f.deg, Vec3f.X_AXIS)
+                            }
+                    }
+
+                    Button("Вниз ▼") {
+                        modifier
+                            .padding(horizontal = 8.dp, vertical = 6.dp)
+                            .margin(start = 4.dp, end = 4.dp)
+                            .onClick {
+                                cubeNode.transform.rotate((-10f).deg, Vec3f.X_AXIS)
+                            }
+                    }
+
                     Button("Сброс") {
                         modifier
-                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                            .margin(start = 4.dp)
                             .onClick {
                                 cubeNode.transform.setIdentity()
                             }
