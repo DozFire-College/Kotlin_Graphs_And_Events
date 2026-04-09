@@ -8,13 +8,17 @@ import de.fabmax.kool.modules.ksl.KslPbrShader
 import de.fabmax.kool.scene.addColorMesh
 import de.fabmax.kool.scene.defaultOrbitCamera
 import de.fabmax.kool.modules.ui2.*
+import de.fabmax.kool.pipeline.ClearColorLoad
 import de.fabmax.kool.util.Color
 import de.fabmax.kool.util.MdColor
 import de.fabmax.kool.scene.geometry.*
 import de.fabmax.kool.scene.Scene
+import de.fabmax.kool.util.debugOverlay
 
 
 fun main() = KoolApplication {
+
+    val scene = Scene
     addScene {
         // Настройка камеры
         defaultOrbitCamera()
@@ -40,98 +44,104 @@ fun main() = KoolApplication {
             setColor(Color.WHITE, 5f)
         }
 
+    }
 
-        setupUiScene(Scene.DEFAULT_CLEAR_COLOR)
 
-        addPanelSurface(
-            colors = Colors.singleColorLight(MdColor.BLUE_GREY)
-        ) {
-            modifier
-                .size(300.dp, 160.dp)
-                .align(AlignmentX.End, AlignmentY.Top)
-                .margin(16.dp)
-                .background(RoundRectBackground(colors.background, 12.dp))
-
-            Column {
+        addScene {
+            setupUiScene(ClearColorLoad)
+            
+            addPanelSurface(
+                colors = Colors.singleColorLight(MdColor.BLUE_GREY)
+            ) {
                 modifier
-                    .alignX(AlignmentX.Center)
+                    .size(300.dp, 160.dp)
+                    .align(AlignmentX.End, AlignmentY.Top)
                     .margin(16.dp)
+                    .background(RoundRectBackground(colors.background, 12.dp))
 
-                // Заголовок
-                Text("Управление вращением") {
-                    modifier
-                        .margin(bottom = 16.dp)
-                        .font(sizes.largeText)          // ← ИСПРАВЛЕНО: Font.poppins не существует
-                        .textColor(Color.WHITE)
-                }
-
-                // Горизонтальное расположение кнопок
-                Row {
+                Column {
                     modifier
                         .alignX(AlignmentX.Center)
-                        .margin(bottom = 16.dp)
+                        .margin(16.dp)
 
-                    // Кнопка "Влево" (вращение вокруг оси Y)
-                    Button("◀ -10°") {
+                    // Заголовок
+                    Text("Управление вращением") {
                         modifier
-                            .padding(horizontal = 12.dp, vertical = 8.dp)
-                            .margin(end = 8.dp)
-                            .font(sizes.largeText)          // ← ИСПРАВЛЕНО
-                            .onClick {
-                                // Вращение на -10 градусов вокруг вертикальной оси Y
-                                cubeNode.transform.rotate((-10f).deg, Vec3f.Y_AXIS)
-                            }
+                            .margin(bottom = 16.dp)
+                            .font(sizes.largeText)          // ← ИСПРАВЛЕНО: Font.poppins не существует
+                            .textColor(Color.WHITE)
                     }
 
-                    // Кнопка "Вправо" (вращение вокруг оси Y)
-                    Button("+10° ▶") {
+                    // Горизонтальное расположение кнопок
+                    Row {
                         modifier
-                            .padding(horizontal = 12.dp, vertical = 8.dp)
-                            .margin(start = 8.dp)
-                            .font(sizes.largeText)          // ← ИСПРАВЛЕНО
-                            .onClick {
-                                // Вращение на +10 градусов вокруг вертикальной оси Y
-                                cubeNode.transform.rotate(10f.deg, Vec3f.Y_AXIS)
-                            }
-                    }
-                }
+                            .alignX(AlignmentX.Center)
+                            .margin(bottom = 16.dp)
 
-                // Дополнительные кнопки для вращения по другим осям
-                Row {
-                    modifier.alignX(AlignmentX.Center)
+                        // Кнопка "Влево" (вращение вокруг оси Y)
+                        Button("◀ -10°") {
+                            modifier
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                                .margin(end = 8.dp)
+                                .font(sizes.largeText)          // ← ИСПРАВЛЕНО
+                                .onClick {
+                                    // Вращение на -10 градусов вокруг вертикальной оси Y
+                                    cubeNode.transform.rotate((-10f).deg, Vec3f.Y_AXIS)
+                                }
+                        }
 
-                    Button("Вверх ▲ (X)") {
-                        modifier
-                            .padding(horizontal = 8.dp, vertical = 6.dp)
-                            .margin(end = 4.dp)
-                            .font(sizes.largeText)          // ← ИСПРАВЛЕНО
-                            .onClick {
-                                cubeNode.transform.rotate(10f.deg, Vec3f.X_AXIS)
-                            }
-                    }
-
-                    Button("Вниз ▼ (X)") {
-                        modifier
-                            .padding(horizontal = 8.dp, vertical = 6.dp)
-                            .margin(start = 4.dp, end = 4.dp)
-                            .font(sizes.largeText)          // ← ИСПРАВЛЕНО
-                            .onClick {
-                                cubeNode.transform.rotate((-10f).deg, Vec3f.X_AXIS)
-                            }
+                        // Кнопка "Вправо" (вращение вокруг оси Y)
+                        Button("+10° ▶") {
+                            modifier
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                                .margin(start = 8.dp)
+                                .font(sizes.largeText)          // ← ИСПРАВЛЕНО
+                                .onClick {
+                                    // Вращение на +10 градусов вокруг вертикальной оси Y
+                                    cubeNode.transform.rotate(10f.deg, Vec3f.Y_AXIS)
+                                }
+                        }
                     }
 
-                    Button("Сброс") {
-                        modifier
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
-                            .margin(start = 4.dp)
-                            .font(sizes.largeText)          // ← ИСПРАВЛЕНО
-                            .onClick {
-                                // Сброс вращения: устанавливаем идентичную трансформацию
-                                cubeNode.transform.setIdentity()
-                            }
+                    // Дополнительные кнопки для вращения по другим осям
+                    Row {
+                        modifier.alignX(AlignmentX.Center)
+
+                        Button("Вверх ▲ (X)") {
+                            modifier
+                                .padding(horizontal = 8.dp, vertical = 6.dp)
+                                .margin(end = 4.dp)
+                                .font(sizes.largeText)          // ← ИСПРАВЛЕНО
+                                .onClick {
+                                    cubeNode.transform.rotate(10f.deg, Vec3f.X_AXIS)
+                                }
+                        }
+
+                        Button("Вниз ▼ (X)") {
+                            modifier
+                                .padding(horizontal = 8.dp, vertical = 6.dp)
+                                .margin(start = 4.dp, end = 4.dp)
+                                .font(sizes.largeText)          // ← ИСПРАВЛЕНО
+                                .onClick {
+                                    cubeNode.transform.rotate((-10f).deg, Vec3f.X_AXIS)
+                                }
+                        }
+
+                        Button("Сброс") {
+                            modifier
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                                .margin(start = 4.dp)
+                                .font(sizes.largeText)          // ← ИСПРАВЛЕНО
+                                .onClick {
+                                    // Сброс вращения: устанавливаем идентичную трансформацию
+                                    cubeNode.transform.setIdentity()
+                                }
+                        }
                     }
                 }
             }
         }
     }
 }
+
+
