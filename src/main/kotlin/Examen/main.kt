@@ -1,4 +1,5 @@
-package questJournal
+package Examen
+
 
 import de.fabmax.kool.KoolApplication           // KoolApplication - запускает Kool-приложение (окно + цикл рендера)
 import de.fabmax.kool.addScene                  // addScene - функция "добавь сцену" в приложение (у тебя она просила отдельный импорт)
@@ -80,6 +81,12 @@ sealed interface GameEvent{
 data class QuestJournalUpdated(
     override val playerId: String
 ): GameEvent
+
+data class QuestCompleted(
+    override val playerId: String,
+    val questId: String,
+    val questTitle: String
+) : GameEvent
 //------------------ События, что будут влиять на UI и другие системы -------------//
 
 sealed interface GameCommand{
@@ -222,7 +229,7 @@ class GameServer{
         return _questByPlayer.value[playerId] ?: emptyList()
     }
     private fun setPlayerQuests(playerId: String, quests : List<QuestStateOnServer>){
-       val oldMap = _questByPlayer.value.toMutableMap()
+        val oldMap = _questByPlayer.value.toMutableMap()
         oldMap[playerId] = quests
         _questByPlayer.value = oldMap.toMap()
     }
@@ -288,6 +295,8 @@ class GameServer{
 
     private suspend fun  progressQuest(playerId: String, questId: String){
         val quests = getPlayerQuests(playerId).toMutableList()
+        var completedQuestTitle: String? = null
+
 
         for(i in quests.indices){
             val q = quests[i]
@@ -300,6 +309,10 @@ class GameServer{
                     else -> false
                 }
                 val newStatus = if (completed) QuestStatus.COMPLETED else QuestStatus.ACTIVE
+
+                if (completed && q.status != QuestStatus.COMPLETED) {
+                    completedQuestTitle = q.title
+                }
 
                 quests[i] = q.copy(isNew = false, step = newStep, status = newStatus)
             }
@@ -317,6 +330,9 @@ class HudState{
     val selectedQuestId = mutableStateOf<String?>(null)
 
     val log = mutableStateOf<List<String>>(emptyList())
+
+    val victoryVisible = mutableStateOf(false)
+    val victoryMessage = mutableStateOf("")
 }
 
 fun hudLog(hud: HudState, text: String){
@@ -384,6 +400,19 @@ fun main() = KoolApplication {
                     if (pinned != null) hud.selectedQuestId.value = pinned.questId
                 }
             }
+        }
+        coroutineScope.launch {
+            server.events
+                .filter { it is QuestCompleted && it.playerId == hud.activePlayerIdFlow.value }
+                .collect { event ->
+                    event as QuestCompleted
+                    hud.victoryMessage.value = "ПОБЕДА!\nКвест завершён: ${event.questTitle}"
+                    hud.victoryVisible.value = true
+
+                    // Автоматически скрыть через 3 секунды
+                    delay(3000)
+                    hud.victoryVisible.value = false
+                }
         }
         hud.activePlayerIdFlow
             .flatMapLatest { pid ->
@@ -468,6 +497,42 @@ fun main() = KoolApplication {
             Text("Log:"){ modifier.margin(top = sizes.gap)}
             for (line in hud.log.use()){
                 Text(line){ modifier.font(sizes.smallText)}
+            }
+            if (hud.victoryVisible.use()) {
+                addPanelSurface {
+                    modifier
+                        .align(AlignmentX.Center, AlignmentY.Center)
+                        .size(400.dp, 200.dp)
+                        .background(RoundRectBackground(Color(0.1f, 0.1f, 0.1f, 0.95f), 24.dp))
+                        .padding(24.dp)
+
+                    Column {
+                        modifier.align(AlignmentX.Center, AlignmentY.Center)
+
+                        Text("🎉") {
+                            modifier
+                                .align(AlignmentX.Center)
+                                .font(sizes.largeText)
+                                .margin(bottom = 16.dp)
+                        }
+
+                        Text(hud.victoryMessage.value) {
+                            modifier
+                                .align(AlignmentX.Center)
+                                .font(sizes.normalText)
+                                .textAlign(AlignmentX.Center)
+                                .margin(bottom = 24.dp)
+                        }
+
+                        Button("Продолжить") {
+                            modifier
+                                .align(AlignmentX.Center)
+                                .onClick {
+                                    hud.victoryVisible.value = false
+                                }
+                        }
+                    }
+                }
             }
         }
     }
