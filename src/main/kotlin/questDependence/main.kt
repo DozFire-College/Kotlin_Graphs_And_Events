@@ -123,6 +123,8 @@ data class QuestJournalUpdated(
     override val playerId: String
 ): GameEvent
 
+
+
 data class QuestOpened(
     override val playerId: String,
     val questId: String
