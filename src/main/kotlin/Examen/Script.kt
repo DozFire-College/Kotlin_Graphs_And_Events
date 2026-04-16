@@ -1,14 +1,19 @@
 package Examen
 
-import  kotlinx.serialization.json.Json
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
 import java.io.File
 
-fun countLines(filePath: String): Int = File(filePath).useLines { it.count()}
+@Serializable
+data class FileInfo(val filename: String, val lines: Int)
 
-fun main(){
+fun countLines(filePath: String): Int = File(filePath).useLines { it.count() }
+
+fun main() {
     val filePath = "C:\\Users\\user\\IdeaProjects\\Kotlin_Graphs_And_Events\\src\\main\\kotlin\\playerGridMovement\\main.kt"
     val lineCount = countLines(filePath)
 
-    val result = Json.encodeToString(mapOf("filename" to filePath, "lines" to lineCount))
+    val result = Json.encodeToString(FileInfo(filePath, lineCount))
     println(result)
 }
