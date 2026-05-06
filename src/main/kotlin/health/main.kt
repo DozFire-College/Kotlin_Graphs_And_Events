@@ -419,7 +419,6 @@ class GameServer {
 
                     if (newHp <= 0) {
                         _events.tryEmit(ServerMessage(cmd.playerId, "Вы погибли!"))
-                        return@updatePlayer initialPlayerState(cmd.playerId)
                     }
                     newPlayer
                 }
@@ -827,7 +826,21 @@ fun main() = KoolApplication {
                         if (hpPercent > 60) Color(0.1f, 0.75f, 0.25f, 0.9f)
                         else if (hpPercent > 30) Color(0.9f, 0.7f, 0.15f, 0.9f)
                         else Color(0.9f, 0.15f, 0.1f, 0.9f)
+                    if (player.hp == 0) {
+                            addPanelSurface {
+                                modifier
+                                    .align(AlignmentX.Center, AlignmentY.Center)
+                                    .background(RoundRectBackground(Color(0f, 0f, 255f, 0.6f), (12.dp)))
+                                    .padding(24.dp)
+                                Text("Ты сдох :("){
+                                    modifier
+                                        .font(sizes.largeText)
+                                        .margin(end = 8.dp)
+                                        .align(AlignmentX.Center, AlignmentY.Center)
 
+                                }
+                            }
+                    }
                     Text("HP: $hpPercent%") {
                         modifier.font(sizes.smallText).margin(end = 8.dp)
                     }
