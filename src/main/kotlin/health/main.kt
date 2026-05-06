@@ -199,11 +199,18 @@ fun buildAlchemistDialogue(player: PlayerState): DialogueView{
 sealed interface GameCommand{
     val playerId: String
 }
+data class CmdTakeDamage(
+    override val playerId: String,
+    val hp: Int,
+    val damage: Int
+): GameCommand
+
 data class CmdMovePlayer(
     override val playerId: String,
     val dx: Float,
     val dz: Float
 ): GameCommand
+
 
 data class CmdInteract(
     override val playerId: String
@@ -315,7 +322,6 @@ class GameServer {
     )
     val players: StateFlow<Map<String, PlayerState>> = _players.asStateFlow()
 
-
     fun start(scope: kotlinx.coroutines.CoroutineScope){
         scope.launch {
             commands.collect{cmd ->
@@ -399,23 +405,42 @@ class GameServer {
             }
         updatePlayer(playerId) {p -> p.copy(hintText = newHint, currentAreaId = newAreaId)}
     }
+
     private suspend fun processCommand(cmd: GameCommand) {
         when (cmd) {
+            is CmdTakeDamage -> {
+                updatePlayer(cmd.playerId) { p ->
+                    val newHp = (p.hp - cmd.damage).coerceAtLeast(0)
+                    val newPlayer = p.copy(hp = newHp)
+
+
+                    _events.tryEmit(ServerMessage(cmd.playerId, "Получено ${cmd.damage} урона. HP: ${newHp}/100"))
+
+
+                    if (newHp <= 0) {
+                        _events.tryEmit(ServerMessage(cmd.playerId, "Вы погибли!"))
+                        return@updatePlayer initialPlayerState(cmd.playerId)
+                    }
+                    newPlayer
+                }
+            }
             is CmdMovePlayer -> {
                 updatePlayer(cmd.playerId) { p -> p.copy(posX = p.posX + cmd.dx, posZ = p.posZ + cmd.dz)
                 }
                 refreshPlayerArea(cmd.playerId)
             }
+
             is CmdInteract -> {
                 val player = getPlayerState(cmd.playerId) //!
                 val obj = nearestObject(player)
-                val dist = distance2d(player.posX, player.posZ, obj.x, obj.z)
-                val herb = herbCount(player)
-
                 if (obj == null){
                     _events.emit(ServerMessage(cmd.playerId, "Рядом нет объектов для взаимодействия"))
                     return
                 }
+                val dist = distance2d(player.posX, player.posZ, obj.x, obj.z)
+                val herb = herbCount(player)
+
+
                 if (dist > obj.interactRadius) {
                     _events.emit(ServerMessage(cmd.playerId, "ты куда ушёл?"))
                     return
@@ -796,7 +821,7 @@ fun main() = KoolApplication {
                 Row {
                     modifier.margin(bottom = sizes.smallGap)
 
-                        // Добавил Row и Box для полоски хп
+
                     val hpPercent = player.hp.coerceIn(0, 100)
                     val hpColor =
                         if (hpPercent > 60) Color(0.1f, 0.75f, 0.25f, 0.9f)
@@ -851,35 +876,40 @@ fun main() = KoolApplication {
                                 server.trySend(CmdInteract(player.playerId))
                             }
                         }
-                    }
-
-                    Text(dialogue.npcId) { modifier.margin(top = sizes.gap) }
-
-                    Text(dialogue.text) { modifier.margin(bottom = sizes.smallGap) }
-
-                    if (dialogue.options.isEmpty()) {
-                        Text("Нет доступных вариантов ответа") {
-                            modifier.margin(top = sizes.gap).font(sizes.smallText).margin(bottom = sizes.gap)
+                        Button("Ударить себя (10)") {
+                            modifier.onClick {
+                                server.trySend(CmdTakeDamage(player.playerId, hp = player.hp, damage = 10))
+                            }
                         }
-                    } else {
-                        Row {
-                            for (option in dialogue.options) {
-                                Button(option.text) {
-                                    server.trySend(
-                                        CmdChooseDialogueOption(player.playerId, option.id)
-                                    )
+
+                        Text(dialogue.npcId) { modifier.margin(top = sizes.gap) }
+
+                        Text(dialogue.text) { modifier.margin(bottom = sizes.smallGap) }
+
+                        if (dialogue.options.isEmpty()) {
+                            Text("Нет доступных вариантов ответа") {
+                                modifier.margin(top = sizes.gap).font(sizes.smallText).margin(bottom = sizes.gap)
+                            }
+                        } else {
+                            Row {
+                                for (option in dialogue.options) {
+                                    Button(option.text) {
+                                        server.trySend(
+                                            CmdChooseDialogueOption(player.playerId, option.id)
+                                        )
+                                    }
                                 }
                             }
                         }
-                    }
-                    Text("лог: ") { modifier.margin(top = sizes.gap, bottom = sizes.gap) }
+                        Text("лог: ") { modifier.margin(top = sizes.gap, bottom = sizes.gap) }
 
-                    for (line in hud.log.use()) {
-                        Text(line) { modifier.font(sizes.smallText) }
-                    }
+                        for (line in hud.log.use()) {
+                            Text(line) { modifier.font(sizes.smallText) }
+                        }
 
-                   // (799 строка) Я добавил Row и Box для полоски хп
-                    // (63 строка) в состояние игрока добавил HP, обновил состояние для смены двух игроков в initialPlayerState
+                        // (799 строка) Я добавил Row и Box для полоски хп
+                        // (63 строка) в состояние игрока добавил HP, обновил состояние для смены двух игроков в initialPlayerState
+                    }
                 }
             }
         }
